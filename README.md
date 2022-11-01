@@ -6,6 +6,8 @@ Huge thanks to the kind and wonderful people at the XeNTaX server who helped mak
 Limitations:
 - You'll need to obtain the models textures yourself by other means.
 - I also do not have the UV maps decoded yet either, so you'll have to set those yourself as well.
+- The coordinates in Punch-Out!! are (x, -z, y) but I did not adjust for this, so the models will reflect that.
+- The model meshes and joints are not given their native names. There is likely a way to make that possible, but I'm not going to implement it since I don't think it is entirely necessary.
 
 # How to use:
 1. [Get the Noesis program here.](https://richwhitehouse.com/index.php?content=inc_projects.php)
