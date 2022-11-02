@@ -8,6 +8,12 @@ Limitations:
 - I also do not have the UV maps decoded yet either, so you'll have to set those yourself as well.
 - The coordinates in Punch-Out!! are (x, -z, y) but I did not adjust for this, so the models will reflect that.
 - The model meshes and joints are not given their native names. There is likely a way to make that possible, but I'm not going to implement it since I don't think it is entirely necessary.
+- Also I forgot to take out the debug window so if it annoys you, open the .py file in something like notepad and remove this code (lines 16-18):
+`    noesis.logPopup()`
+
+  `print(`
+
+  `"The log can be useful for catching debug prints from preview loads.\nBut don't leave it on when you release your script, or it will probably annoy people.")`
 
 # How to use:
 1. [Get the Noesis program here.](https://richwhitehouse.com/index.php?content=inc_projects.php)
