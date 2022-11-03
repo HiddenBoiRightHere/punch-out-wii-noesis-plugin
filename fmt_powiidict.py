@@ -277,7 +277,6 @@ def parseDataFileChunks(all_chunk_data_list, block_list):
                 vertex_items_length.append(mesh_tuples)
                 total_offset += 52
 
-    for saved in all_chunk_data_list:
         if saved[0] == 0xB005:
             block_index = block_list[1]
             block_offset = block_index[0]
@@ -293,7 +292,6 @@ def parseDataFileChunks(all_chunk_data_list, block_list):
                 vertex_attribute_data_list.append(saving_tuple)
                 total_offset = bds.getOffset()
 
-    for saved in all_chunk_data_list:
         # For bones
         if saved[0] == 0xB00A:
             # Get offset where bone 4x3 matrices are
@@ -310,7 +308,6 @@ def parseDataFileChunks(all_chunk_data_list, block_list):
                 hash_to_mat[bone_hash] = jointMat
                 total_offset = bds.getOffset()
 
-    for saved in all_chunk_data_list:
         if saved[0] == 0xB00B:
             block_index = block_list[1]
             block_offset = block_index[0]
@@ -324,7 +321,6 @@ def parseDataFileChunks(all_chunk_data_list, block_list):
                 total_offset += 4
             bone_maps.append(temp_set)
 
-    for saved in all_chunk_data_list:
         #Retrieves bone hashes
         if saved[0] == 0x8003:
             # Get offset where bone hashes are
@@ -339,7 +335,6 @@ def parseDataFileChunks(all_chunk_data_list, block_list):
                 hashList.append(bone_hash_read)
                 total_offset += 4
 
-    for saved in all_chunk_data_list:
         #Bone parenting, same order as previous one
         if saved[0] == 0x8009:
             # Get offset where bone parenting info is
@@ -353,7 +348,6 @@ def parseDataFileChunks(all_chunk_data_list, block_list):
                 pList.append(parent)
                 total_offset += 4
 
-    for saved in all_chunk_data_list:
         if saved[0] == 0x8010:
             # Get offset where bone positions are
             block_index = block_list[1]
