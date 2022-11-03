@@ -8,6 +8,8 @@ Limitations:
 - I also do not have the UV maps decoded yet either, so you'll have to set those yourself as well.
 - The coordinates in Punch-Out!! are (x, -z, y) but I did not adjust for this, so the models will reflect that.
 - The model meshes and joints are not given their native names. There is likely a way to make that possible, but I'm not going to implement it since I don't think it is entirely necessary.
+- Weights are currently buggy. Reccomend some self-adjustment when using them. Working to see if these can be fixed.
+- Crowd models export with a skeleton, but no weights or bone parenting.
 - Also I forgot to take out the debug window so if it annoys you, open the .py file in something like notepad and remove this code (lines 16-18):
 `    noesis.logPopup()`
 
