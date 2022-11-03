@@ -253,6 +253,7 @@ def parseDataFileChunks(all_chunk_data_list, block_list):
     some_bone_matrices = []
 
     model_counter = -1
+    crowd_bones = 0
 
 
     joint_list = []
@@ -299,6 +300,9 @@ def parseDataFileChunks(all_chunk_data_list, block_list):
             block_offset = block_index[0]
             total_offset = block_offset + saved[2]
             size_limit = block_offset + saved[2] + saved[1]
+            crowd_bones = (size_limit - total_offset) // 68
+            if model_counter == 1 or model_counter == 0:
+                bone_offset = block_offset + saved[2]
 
             # While within size limit, read location of bones
             while total_offset < size_limit:
@@ -494,15 +498,32 @@ def parseDataFileChunks(all_chunk_data_list, block_list):
 
         bone_mappings = bone_maps[items]
         bone_map_numbers = []
-
         for bones in bone_maps[items]:
-            bonemap_temp = hashList.index(bones)
-            bone_map_numbers.append(bonemap_temp)
-        rapi.rpgSetBoneMap(bone_map_numbers)
-        chosen_assignments = bone_assignment[items]
-        chosen_weights = bone_weights[items]
-        rapi.rpgBindBoneIndexBuffer(chosen_assignments, noesis.RPGEODATA_BYTE, 4, 1)
-        rapi.rpgBindBoneWeightBuffer(chosen_weights, noesis.RPGEODATA_FLOAT, 4, 1)
+            if bones in hashList:
+                bonemap_temp = hashList.index(bones)
+                bone_map_numbers.append(bonemap_temp)
+                rapi.rpgSetBoneMap(bone_map_numbers)
+                chosen_assignments = bone_assignment[items]
+                chosen_weights = bone_weights[items]
+                rapi.rpgBindBoneIndexBuffer(chosen_assignments, noesis.RPGEODATA_BYTE, 4, 1)
+                rapi.rpgBindBoneWeightBuffer(chosen_weights, noesis.RPGEODATA_FLOAT, 4, 1)
+            else:
+                #This is for the crowd models which are weird and have their data stored in the crowdanim file.
+                #They're the only ones to do this
+                #Because they're such an outlier, I don't want to have to rewrite everything for them to get the right
+                # weights and parenting
+                #However, I figured I'd still let the bones export as well for those who would want to use them.
+                bds.setOffset(bone_offset)
+                for i in range(0, crowd_bones):
+                    bone_hash = bds.readBytes(4)  # joint hash
+                    jointMat = NoeMat44.fromBytes(bds.readBytes(64), 1).toMat43()
+                    #rapi.rpgSetBoneMap(bonemap)
+                    #parentID = index_choice[0]  # since parent ID is somewhere else put -1 for now
+                    parentID = - 1
+                    joint = NoeBone(i, 'joint_' + str(i), jointMat, None, parentID)
+                    joint_list.append(joint)
+
+
 
 
         rapi.rpgCommitTriangles(faces_data[items], noesis.RPGEODATA_USHORT, location_saver[1], noesis.RPGEO_TRIANGLE_STRIP)
