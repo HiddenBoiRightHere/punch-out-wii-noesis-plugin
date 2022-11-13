@@ -1,6 +1,8 @@
 from inc_noesis import *
 import rapi
 import os
+import struct
+#import lib_zq_nintendo_tex as tex
 
 # registerNoesisTypes is called by Noesis to allow the script to register formats.
 # Do not implement this function in script files unless you want them to be dedicated format modules!
@@ -13,7 +15,7 @@ def registerNoesisTypes():
     handle = noesis.register("Punch-Out!! Wii Data/Dict pair", ".dict")
     noesis.setHandlerTypeCheck(handle, CheckDictType)
     noesis.setHandlerLoadModel(handle, ExtractDict)
-    noesis.logPopup()
+    #noesis.logPopup()
     print(
         "The log can be useful for catching debug prints from preview loads.\nBut don't leave it on when you release your script, or it will probably annoy people.")
     return 1
@@ -95,12 +97,22 @@ def ExtractDict(data, mdlList):
     bds = NoeBitStream(rapi.loadIntoByteArray(dataFileName), 1)
     bds.setEndian(bigEndian=True)
 
+    #Sets whether animation true or false.
+    global animationbool
+    animationbool = False
 
     all_chunk_info = splitDataFileChunks(block_list, file_entries)
     parsed_data = parseDataFileChunks(all_chunk_info, block_list)
 
-
     mdl = rapi.rpgConstructModel()
+
+    #if animations present, add them to the model
+    if animationbool == True:
+        animList = animation_data(all_chunk_info, block_list)
+        mdl.setAnims(animList)
+
+    #textures_here = read_textures(all_chunk_info, block_list)
+
     mdl.setBones(parsed_data)
     mdlList.append(mdl)
 
@@ -385,6 +397,7 @@ def parseDataFileChunks(all_chunk_data_list, block_list):
     binding_info = []
     bone_assignment = []
     bone_weights = []
+    normals_info = []
     extra_info = []
     faces_data = []
 
@@ -400,13 +413,31 @@ def parseDataFileChunks(all_chunk_data_list, block_list):
                 # Sets offset to the right place per sub-chunk!!!
                 bds.setOffset(total_offset + int(elements[0]))
                 # If collection of UV data
-                if elements[1] == 0xFE:
+                if elements[1] == 0xCC:
                     # Gets current tuple to look at
                     collect_location = vertex_items_length[mesh_counter]
+                    print(bds.getOffset(), "UV MAP offsets")
+                    size_limit_uvs = bds.getOffset() + (collect_location[0] * elements[2])
+                    new_bytes = b""
+                    while bds.getOffset() < size_limit_uvs:
+                        u = bds.readUShort() / 1024
+                        v = bds.readUShort() / 1024
+                        u2 = bytearray(struct.pack(">f", u))
+                        v2 = bytearray(struct.pack(">f", v))
+                        new_bytes = new_bytes + u2 + v2
 
-                    # Saves info
-                    uv_maps = bds.readBytes(collect_location[0] * elements[2])
+                    uv_maps = new_bytes
+                    #uv_maps = bds.readBytes(collect_location[0] * elements[2])
                     uv_map_info.append(uv_maps)
+
+                elif elements[1] == 0xFE:
+                    collect_location = vertex_items_length[mesh_counter]
+                    print(bds.getOffset(), "Normals offset")
+
+                    normals_data = bds.readBytes(collect_location[0] * elements[2])
+                    print(bds.getOffset(), "Normals end")
+                    normals_info.append(normals_data)
+
                 # Else if collection of binding/unknown
                 elif elements[1] == 0xE9:
                     # Gets current tuple to look at
@@ -431,6 +462,7 @@ def parseDataFileChunks(all_chunk_data_list, block_list):
                     # Saves info
                     bone_weighters = bds.readBytes(collect_location[0] * elements[2])
                     bone_weights.append(bone_weighters)
+
 
                 # Else if its a collection of vertices, put at end to avoid mesh counting issues
                 elif elements[1] == 0x0A:
@@ -468,6 +500,11 @@ def parseDataFileChunks(all_chunk_data_list, block_list):
                     extra_info.append(extra_unknown)
 
 
+
+
+    #Start actually making model
+
+
     # Keeps track of the models vs shadows and will only focus on models for now
     model_mesh = 0
     shadow_mesh = 0
@@ -496,6 +533,13 @@ def parseDataFileChunks(all_chunk_data_list, block_list):
         # Gets the amount of faces and saves them to set faces
         location_saver = vertex_items_length[items]
 
+        #Sets normals
+        #rapi.rpgBindNormalBuffer()
+
+        #Begins mapping UV maps
+        print(len(uv_map_info))
+        rapi.rpgBindUV1Buffer(uv_map_info[items], noesis.RPGEODATA_FLOAT, 8)
+
         bone_mappings = bone_maps[items]
         bone_map_numbers = []
         for bones in bone_maps[items]:
@@ -513,6 +557,7 @@ def parseDataFileChunks(all_chunk_data_list, block_list):
                 #Because they're such an outlier, I don't want to have to rewrite everything for them to get the right
                 # weights and parenting
                 #However, I figured I'd still let the bones export as well for those who would want to use them.
+                animationbool = False
                 bds.setOffset(bone_offset)
                 for i in range(0, crowd_bones):
                     bone_hash = bds.readBytes(4)  # joint hash
@@ -530,3 +575,98 @@ def parseDataFileChunks(all_chunk_data_list, block_list):
 
 
     return joint_list
+
+def read_textures (all_chunk_data_list, block_list):
+
+    #Starts byte stream for data file
+    bds = NoeBitStream(rapi.loadIntoByteArray(dataFileName), 1)
+    bds.setEndian(bigEndian=True)
+
+    #Obtains Texture headers
+    for saved in all_chunk_data_list:
+        if saved[0] == 0xB601:
+            block_index = block_list[1]
+            block_offset = block_index[0]
+            total_offset = block_offset + saved[2]
+            size_limit = block_offset + saved[2] + saved[1]
+            bds.setOffset(total_offset)
+            while total_offset < size_limit:
+                texture_hash = bds.readBytes(4)
+                unknown = bds.readBytes(14)
+                offset_tex = bds.readUInt()
+                print(offset_tex, "Texture Offset")
+                unknown2 = bds.readBytes(64)
+                print(unknown2, "UNknown 2")
+                total_offset = bds.getOffset()
+            #tex.readTexture(bs, width=, height=, dataFormat=, palette=, pixelFormat=)
+#For future use to look at animations. Not really sure what to do yet but I'll figure it out eventually.
+# def animation_data(all_chunk_data_list, block_list):
+#
+#     bds = NoeBitStream(rapi.loadIntoByteArray(dataFileName), 1)
+#     bds.setEndian(bigEndian=True)
+#
+#     anim_count = 0
+#     start_anim_list = []
+#     name_list = []
+#     rot_list = []
+#     translation_list = []
+#     scale_list = []
+
+    # for saved in all_chunk_data_list:
+    #     if saved[0] == 0x7001:
+    #         block_index = block_list[1]
+    #         block_offset = block_index[0]
+    #         total_offset = block_offset + saved[2]
+    #         size_limit = block_offset + saved[2] + saved[1]
+    #         bds.setOffset(total_offset)
+    #         anim_count += 1
+    #         reader = size_limit - total_offset
+    #         start_anim = bds.readBytes(reader)
+    #         start_anim_list.append(start_anim)
+    #
+    #     elif saved[0] == 0x7002:
+    #         block_index = block_list[1]
+    #         block_offset = block_index[0]
+    #         total_offset = block_offset + saved[2]
+    #         size_limit = block_offset + saved[2] + saved[1]
+    #         bds.setOffset(total_offset)
+    #         reader = size_limit - total_offset
+    #         name = bds.readBytes(reader)
+    #         name_list.append(name)
+    #
+    #     elif saved[0] == 0x7101:
+    #         block_index = block_list[1]
+    #         block_offset = block_index[0]
+    #         total_offset = block_offset + saved[2]
+    #         size_limit = block_offset + saved[2] + saved[1]
+    #         bds.setOffset(total_offset)
+    #         reader = size_limit - total_offset
+    #         rot = bds.readBytes(reader)
+    #         rot_list.append(rot)
+    #
+    #
+    #     elif saved[0] == 0x7102:
+    #         block_index = block_list[1]
+    #         block_offset = block_index[0]
+    #         total_offset = block_offset + saved[2]
+    #         size_limit = block_offset + saved[2] + saved[1]
+    #         bds.setOffset(total_offset)
+    #         reader = size_limit - total_offset
+    #         translation = bds.readBytes(reader)
+    #         translation_list.append(translation)
+    #
+    #
+    #     elif saved[0] == 0x7103:
+    #         block_index = block_list[1]
+    #         block_offset = block_index[0]
+    #         total_offset = block_offset + saved[2]
+    #         size_limit = block_offset + saved[2] + saved[1]
+    #         bds.setOffset(total_offset)
+    #         bds.setOffset(total_offset)
+    #         reader = size_limit - total_offset
+    #         scale = bds.readBytes(reader)
+    #         scale_list.append(scale)
+    #
+    #
+    # for elements in range (0, anim_count):
+    #     print(name_list)
