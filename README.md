@@ -3,6 +3,8 @@ A noesis plugin to extract Punch-Out!! Wii models with their meshes and rig.
 
 Huge thanks to the kind and wonderful people at the XeNTaX server who helped make this possible by identifying a lot of sections that I could not see before and assisting with sections of the code. Their help has been invaluable, and this wouldn't have been possible without them!
 
+Addittionally, thanks to the creators at Switch Toolbox who made the code there that a lot of this plugin is based on. Without their code, I wouldn't know what I'm looking at!
+
 Limitations:
 - You'll need to obtain the models textures yourself by other means.
 - The coordinates in Punch-Out!! are (x, -z, y) but I did not adjust for this, so the models will reflect that.
